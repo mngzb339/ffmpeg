@@ -14,7 +14,7 @@ extern "C" {
 typedef void (*RenderFrameCallBack)(uint8_t *,int,int,int);
 class VideoChannel : public BaseChannel {
 public:
-    VideoChannel(int id, AVCodecContext *avCodecContext);
+    VideoChannel(int id, AVCodecContext *avCodecContext, int fps);
 
     ~VideoChannel();
 
@@ -33,6 +33,7 @@ private:
     pthread_t pid_play;
     SwsContext *swsContext=0;
     RenderFrameCallBack callBack;
+    int fps;
 };
 
 

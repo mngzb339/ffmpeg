@@ -109,7 +109,10 @@ void BaseFFmpeg::_prepare() {
         if (codecPar->codec_type == AVMEDIA_TYPE_AUDIO) {//音频
             audioChannel = new AudioChannel(i, context);
         } else if (codecPar->codec_type == AVMEDIA_TYPE_VIDEO) {//视频
-            videoChannel = new VideoChannel(i, context);
+            //帧率：单位时间内 显示多少个图像
+            AVRational frame_rate = stream->avg_frame_rate;
+            int fps = av_q2d(frame_rate);
+            videoChannel = new VideoChannel(i, context, fps);
             videoChannel->setRenderFrame(callback);
 
         }
