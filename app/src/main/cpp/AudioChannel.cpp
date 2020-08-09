@@ -16,8 +16,8 @@ void *audio_play(void *args) {
     return 0;
 }
 
-AudioChannel::AudioChannel(int id, AVCodecContext *avCodecContext) : BaseChannel(id,
-                                                                                 avCodecContext) {
+AudioChannel::AudioChannel(int id, AVCodecContext *avCodecContext, AVRational time_base) : BaseChannel(id,
+                                                                                 avCodecContext,time_base) {
     out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
     out_samplesize = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
     out_sample_rate = 44100;
@@ -215,5 +215,8 @@ int AudioChannel::getPcm() {
     // 真正转出的数据samples（单位是 44100*2(声道2个)）
     // 获取自己大小
     data_size = samples* out_samplesize * out_channels;//得到了多少个字节
+    //获取音视频相对播放时间
+    //获取相对播放这一段数据的的秒数
+    clock = frame->pts*av_q2d(time_base);
     return data_size;
 }

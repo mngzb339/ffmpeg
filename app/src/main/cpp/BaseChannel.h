@@ -14,7 +14,7 @@ extern "C" {
 
 class BaseChannel {
 public:
-    BaseChannel(int id,AVCodecContext *context) : id(id),avCodecContext(context) {
+    BaseChannel(int id,AVCodecContext *context,AVRational time_base) : id(id),avCodecContext(context) ,time_base(time_base){
         frames.setReleaseCallback(releaseAVFrame);
         pakets.setReleaseCallback(BaseChannel::releasePacket);
 
@@ -55,6 +55,10 @@ public:
 
     bool isPlaying;
     AVCodecContext *avCodecContext;
+    AVRational time_base;
+    //时间戳
+    double clock;
+
 };
 
 

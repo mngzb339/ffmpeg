@@ -106,13 +106,15 @@ void BaseFFmpeg::_prepare() {
             callHelper->onError(THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
             return;
         }
+        //单位This is the fundamental unit of time (in seconds) in terms
+        AVRational time_base = stream->time_base;
         if (codecPar->codec_type == AVMEDIA_TYPE_AUDIO) {//音频
-            audioChannel = new AudioChannel(i, context);
+            audioChannel = new AudioChannel(i, context, time_base);
         } else if (codecPar->codec_type == AVMEDIA_TYPE_VIDEO) {//视频
             //帧率：单位时间内 显示多少个图像
             AVRational frame_rate = stream->avg_frame_rate;
             int fps = av_q2d(frame_rate);
-            videoChannel = new VideoChannel(i, context, fps);
+            videoChannel = new VideoChannel(i, context, fps, time_base);
             videoChannel->setRenderFrame(callback);
 
         }
@@ -141,12 +143,14 @@ void BaseFFmpeg::startPlay() {
     // 正在播放
     isPlaying = true;
     //设置伟工作状态
-    if (videoChannel) {
-        videoChannel->play();
-    }
     if (audioChannel) {
         audioChannel->play();
     }
+    if (videoChannel) {
+        videoChannel->setAudioChannel(audioChannel);
+        videoChannel->play();
+    }
+
     pthread_create(&playerPid, 0, task_play, this);
 }
 
