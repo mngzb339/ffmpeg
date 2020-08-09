@@ -57,6 +57,7 @@ public:
     AVCodecContext *avCodecContext;
     AVRational time_base;
     //时间戳
+public:
     double clock;
 
 };

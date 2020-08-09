@@ -141,7 +141,7 @@ void *task_play(void *args) {
 void BaseFFmpeg::startPlay() {
 
     // 正在播放
-    isPlaying = true;
+    isPlaying = 1;
     //设置伟工作状态
     if (audioChannel) {
         audioChannel->play();
@@ -170,7 +170,6 @@ void BaseFFmpeg::_startPlay() {
                 audioChannel->pakets.push(packet);
             } else if (videoChannel && packet->stream_index == videoChannel->id) {
                 videoChannel->pakets.push(packet);
-
             }
         } else if (ret == AVERROR_EOF) {
             //读取完成 但是可能没有播放完成

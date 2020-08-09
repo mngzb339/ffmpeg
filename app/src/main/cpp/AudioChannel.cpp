@@ -209,7 +209,7 @@ int AudioChannel::getPcm() {
     // 如果不出来 会造成积压 数据越积压越多 会导致堆崩掉
     int64_t delays = swr_get_delay(swrContext, frame->sample_rate);
     //将nb_samples 由采样率 sample_rate 转化成 44100 后返回多少个数据
-    int64_t maxSample = av_rescale_rnd(delays + frame->nb_samples, 44100, frame->sample_rate, AV_ROUND_UP);
+    int64_t maxSample = av_rescale_rnd(delays + frame->nb_samples, out_sample_rate, frame->sample_rate, AV_ROUND_UP);
     // 上下文+输出反冲区+输出反冲区+ 能接受的最大数据量+ 输入数据 +输入数据个数
     int samples = swr_convert(swrContext, &data, maxSample, (const uint8_t **)frame->data, frame->nb_samples);
     // 真正转出的数据samples（单位是 44100*2(声道2个)）
@@ -218,5 +218,7 @@ int AudioChannel::getPcm() {
     //获取音视频相对播放时间
     //获取相对播放这一段数据的的秒数
     clock = frame->pts*av_q2d(time_base);
+    //LOGE("视频快了AudioChannel clock：%d",);
+
     return data_size;
 }

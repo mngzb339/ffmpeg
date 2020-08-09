@@ -158,13 +158,21 @@ void VideoChannel::render() {
         //真实需要的间隔时间
         double delays = extra_delay + frame_delays;
         if (!audioChannel) {
+            LOGE("视频快了video audioChannel：%lf",audioChannel->clock);
             av_usleep(delays * 1000000);
         } else {
             if (clock == 0) {
+                LOGE("视频快了video audioChannel %lf",audioChannel->clock);
                 av_usleep(delays * 1000000);
             } else {
                 //比较音视频
                 double audioClock = audioChannel->clock;
+                if(audioChannel->clock<0.0001){
+                    av_usleep(1 * 1000000);
+                    audioClock = audioChannel->clock;
+                }
+                LOGE("视频快了video audioChannel %d",&audioChannel);
+
                 //音视频相差的间隔
                 double diff = clock - audioClock;
                 //大于0 表示视频比较快 小于0 表示音频比较快
@@ -199,6 +207,9 @@ void VideoChannel::setRenderFrame(RenderFrameCallBack callBack) {
     this->callBack = callBack;
 }
 
-void VideoChannel::setAudioChannel(AudioChannel *audioChannel) {
-    this->audioChannel = audioChannel;
+void VideoChannel::setAudioChannel(AudioChannel* audioChannel1) {
+    LOGE("视频快了video audioChannel 207：%d",&audioChannel1);
+    audioChannel = audioChannel1;
+    LOGE("视频快了video audioChannel 210：%d",&audioChannel);
+
 }

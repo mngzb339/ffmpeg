@@ -17,7 +17,6 @@ public class LubanPlayer implements SurfaceHolder.Callback{
     public void setDateSource(String source) {
         dateSource = source;
     }
-
     /**
      * 开始播放
      */
