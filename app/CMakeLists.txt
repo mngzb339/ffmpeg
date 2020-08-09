@@ -12,7 +12,7 @@ add_library(
 
 include_directories(src/main/cpp/include)
 
-
+# -D 增加预编译宏 -U 是取消预编译 宏
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L${CMAKE_SOURCE_DIR}/src/main/cpp/libs/armeabi-v7a")
 
 target_link_libraries(  native-lib
