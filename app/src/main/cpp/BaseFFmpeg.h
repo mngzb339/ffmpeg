@@ -28,19 +28,25 @@ public:
     void _startPlay();
 
     void setRenderFrameCallback(RenderFrameCallBack callback);
-private:
+    // 暂停
+    void stop();
+
+public:
     char * datasource;
     pthread_t pid;
-     pthread_t playerPid;
+    pthread_t playerPid;
+    pthread_t stop_pid;
 
     AVFormatContext *formatContext=0;
-    JavaCallHelper *callHelper;
     //初始化 给予默认值
     AudioChannel *audioChannel=0;
     VideoChannel *videoChannel=0;
     RenderFrameCallBack callback;
 
     bool isPlaying;
+public:
+    JavaCallHelper *callHelper;
+
 };
 
 

@@ -28,7 +28,7 @@ public class LubanPlayer implements SurfaceHolder.Callback{
      * 停止播放
      */
     public void stopPlayer() {
-
+        native_stop();
     }
 
     /**
@@ -108,4 +108,5 @@ public class LubanPlayer implements SurfaceHolder.Callback{
 
     public native void native_SetSurface(Surface surface);
 
+    public native void native_stop();
 }

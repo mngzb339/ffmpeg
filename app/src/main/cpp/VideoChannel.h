@@ -22,6 +22,8 @@ public:
     void setAudioChannel(AudioChannel *audioChannel);
     //播放
     void play();
+    void stop();
+
 
     //解码
     void decode();
@@ -29,6 +31,7 @@ public:
     //渲染
     void render();
     void setRenderFrame(RenderFrameCallBack callBack);
+
 
 private:
     pthread_t pid_decode;

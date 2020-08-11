@@ -8,11 +8,11 @@ BaseFFmpeg *ffmpeg = 0;
 JavaVM *javaVm = 0;
 ANativeWindow *window = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 int JNI_OnLoad(JavaVM *vm, void *unused) {
     javaVm = vm;
     return JNI_VERSION_1_6;
 }
+
 void render(uint8_t *data, int lineszie, int w, int h) {
     pthread_mutex_lock(&mutex);
     if (!window) {
@@ -42,12 +42,13 @@ void render(uint8_t *data, int lineszie, int w, int h) {
     pthread_mutex_unlock(&mutex);
 
 }
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_luban_myapplication_LubanPlayer_native_1prepare(JNIEnv *env, jobject instance,
                                                          jstring date_source) {
     const char *dateSource = env->GetStringUTFChars(date_source, 0);
-    JavaCallHelper *callHelper = new JavaCallHelper(javaVm, env, instance);
+    JavaCallHelper *callHelper= new JavaCallHelper(javaVm, env, instance);
     ffmpeg = new BaseFFmpeg(dateSource, callHelper);
     ffmpeg->setRenderFrameCallback(render);
     ffmpeg->prepare();
@@ -65,7 +66,7 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_luban_myapplication_LubanPlayer_native_1SetSurface(JNIEnv *env, jobject thiz,
                                                             jobject surface) {
-    //?????native_Windows
+    //native_Windows
     pthread_mutex_lock(&mutex);
     if (window) {
         //?????
@@ -76,3 +77,14 @@ Java_com_luban_myapplication_LubanPlayer_native_1SetSurface(JNIEnv *env, jobject
     pthread_mutex_unlock(&mutex);
 }
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_luban_myapplication_LubanPlayer_native_1stop(JNIEnv *env, jobject instance) {
+    if (ffmpeg) {
+        ffmpeg->stop();
+    }
+//    if(callHelper){
+//        delete (callHelper);
+//        callHelper = 0;
+//    }
+}

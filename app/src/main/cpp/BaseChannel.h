@@ -14,7 +14,9 @@ extern "C" {
 
 class BaseChannel {
 public:
-    BaseChannel(int id,AVCodecContext *context,AVRational time_base) : id(id),avCodecContext(context) ,time_base(time_base){
+    BaseChannel(int id, AVCodecContext *context, AVRational time_base) : id(id),
+                                                                         avCodecContext(context),
+                                                                         time_base(time_base) {
         frames.setReleaseCallback(releaseAVFrame);
         pakets.setReleaseCallback(BaseChannel::releasePacket);
 
@@ -25,28 +27,36 @@ public:
     virtual ~BaseChannel() {
         pakets.clear();
         frames.clear();
-
+        if (avCodecContext) {
+            avcodec_close(avCodecContext);
+            avcodec_free_context(&avCodecContext);
+            avCodecContext = 0;
+        }
     }
+
     //相当于抽象方法
-    virtual void play()=0;
+    virtual void play() = 0;
+
     /**
      *
      * 释放av_packet
      */
     static void releasePacket(AVPacket **packet) {
-       if(packet){
-           av_packet_free(packet);
-           //修改指针的指向，
-           *packet=0;
-       }
-    }
-    static void releaseAVFrame(AVFrame **frame){
-        if(frame){
-            av_frame_free(frame);
+        if (packet) {
+            av_packet_free(packet);
             //修改指针的指向，
-            *frame=0;
+            *packet = 0;
         }
     }
+
+    static void releaseAVFrame(AVFrame **frame) {
+        if (frame) {
+            av_frame_free(frame);
+            //修改指针的指向，
+            *frame = 0;
+        }
+    }
+
     int id;
     //编码数据包队列
     SafeQueue<AVPacket *> pakets;

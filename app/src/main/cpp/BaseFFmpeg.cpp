@@ -6,14 +6,30 @@
 #include "JavaCallHelper.h"
 #include "include/libavutil/avutil.h"
 
-void *task_prepare(void *args) {
+void *task_stop(void *args) {
+    BaseFFmpeg *fFmpeg = static_cast<BaseFFmpeg *>(args);
+    // 等待 prepare 结束再来执行接下来的情况
+    pthread_join(fFmpeg->pid, 0);
+    // 保证 start 线程也结束
+    pthread_join(fFmpeg->playerPid, 0);
+    // 这个时候释放就不会有问题了
+    if (fFmpeg->formatContext) {
+        // 关闭读取然后释放结构体本身（关闭网络链接 和读流）
+        avformat_close_input(&fFmpeg->formatContext);
+        avformat_free_context(fFmpeg->formatContext);
+        fFmpeg->formatContext = 0;
+    }
+    DELETE(fFmpeg);
+    return 0;
+}
 
+void *task_prepare(void *args) {
     BaseFFmpeg *fFmpeg = static_cast<BaseFFmpeg *>(args);
     fFmpeg->_prepare();
     // 线程函数一定要return 不然会出错 你也会查不到错误在哪里
     return 0;
-
 }
+
 
 BaseFFmpeg::BaseFFmpeg(const char *datasource, JavaCallHelper *callHelper) {
     //防止datasource 指向的内存被释放
@@ -25,8 +41,8 @@ BaseFFmpeg::BaseFFmpeg(const char *datasource, JavaCallHelper *callHelper) {
 
 BaseFFmpeg::~BaseFFmpeg() {
     //释放
-    delete datasource;
-    datasource = 0;
+//    delete datasource;
+//    datasource = 0;
     DELETE(datasource);
     DELETE(callHelper);
 }
@@ -47,13 +63,18 @@ void BaseFFmpeg::_prepare() {
     //初始化ffmpeg 使用网络
     avformat_network_init();
     //结构体包含了视频的信息宽高等信息 1.拿到formatContext
-    formatContext = 0;
     //文件路径不对 手机没网都有可能导致失败
-    int ret = avformat_open_input(&formatContext, datasource, 0, 0);
+    // 第三那个参数 ：打开的媒体格式一般不用传 第4个参数是一个字典
+    AVDictionary **options = 0;
+    //指示超时时间5秒作用
+    av_dict_set(options, "timeout", "5000000", 0);
+    int ret = avformat_open_input(&formatContext, datasource, 0, options);
 
     if (ret != 0) {//ret ==0表示成功
         LOGE("打开媒体失败:%s", av_err2str(ret));
-        callHelper->onError(THREAD_CHILD, FFMPEG_CAN_NOT_OPEN_URL);
+        if (isPlaying) {
+            callHelper->onError(THREAD_CHILD, FFMPEG_CAN_NOT_OPEN_URL);
+        }
         return;
     }
     //查找媒体中的音视频流
@@ -62,8 +83,9 @@ void BaseFFmpeg::_prepare() {
 
     if (ret < 0) {
         LOGE("查找流失败:%s", av_err2str(ret));
-
-        callHelper->onError(THREAD_CHILD, FFMPEG_CAN_NOT_FIND_STREAMS);
+        if (isPlaying) {
+            callHelper->onError(THREAD_CHILD, FFMPEG_CAN_NOT_FIND_STREAMS);
+        }
         return;
 
     }
@@ -71,6 +93,7 @@ void BaseFFmpeg::_prepare() {
     //经过avformat_find_stream_info formatContext->streams[也就有值了
 
     for (int i = 0; i < formatContext->nb_streams; ++i) {
+        //获取一个流
         AVStream *stream = formatContext->streams[i];
         //包含了解码 这段流的各种信息
         AVCodecParameters *codecPar = stream->codecpar;
@@ -79,31 +102,36 @@ void BaseFFmpeg::_prepare() {
         AVCodec *dec = avcodec_find_decoder(codecPar->codec_id);
         if (dec == NULL) {
             LOGE("查找解码器失败:%s", av_err2str(ret));
-
-            callHelper->onError(THREAD_CHILD, FFMPEG_FIND_DECODER_FAIL);
+            if (isPlaying) {
+                callHelper->onError(THREAD_CHILD, FFMPEG_FIND_DECODER_FAIL);
+            }
             return;
         }
         //2.获得解码器上下文
         AVCodecContext *context = avcodec_alloc_context3(dec);
         if (context == NULL) {
             LOGE("创建解码上下文失败:%s", av_err2str(ret));
-
-            callHelper->onError(THREAD_CHILD, FFMPEG_ALLOC_CODEC_CONTEXT_FAIL);
+            if (isPlaying) {
+                callHelper->onError(THREAD_CHILD, FFMPEG_ALLOC_CODEC_CONTEXT_FAIL);
+            }
             return;
         }
         //3. 设置上下文一些参数
         ret = avcodec_parameters_to_context(context, codecPar);
         if (ret < 0) {
             LOGE("设置解码上下文参数失败:%s", av_err2str(ret));
-
-            callHelper->onError(THREAD_CHILD, FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL);
+            if (isPlaying) {
+                callHelper->onError(THREAD_CHILD, FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL);
+            }
             return;
         }
         //4. 打开解码器
         ret = avcodec_open2(context, dec, 0);
         if (ret != 0) {
             LOGE("打开解码器失败:%s", av_err2str(ret));
-            callHelper->onError(THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
+            if (isPlaying) {
+                callHelper->onError(THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
+            }
             return;
         }
         //单位This is the fundamental unit of time (in seconds) in terms
@@ -124,11 +152,14 @@ void BaseFFmpeg::_prepare() {
 
     if (audioChannel != 0 && !videoChannel != 0) {
         LOGE("没有音视频");
-
-        callHelper->onError(THREAD_CHILD, FFMPEG_NOMEDIA);
+        if (isPlaying) {
+            callHelper->onError(THREAD_CHILD, FFMPEG_NOMEDIA);
+        }
         return;
     }
-    callHelper->onPrepare(THREAD_CHILD);
+    if (isPlaying) {
+        callHelper->onPrepare(THREAD_CHILD);
+    }
 }
 
 void *task_play(void *args) {
@@ -173,16 +204,35 @@ void BaseFFmpeg::_startPlay() {
             }
         } else if (ret == AVERROR_EOF) {
             //读取完成 但是可能没有播放完成
-
+            if (audioChannel->pakets.empty() && audioChannel->frames.empty() &&
+                audioChannel->pakets.empty() && audioChannel->frames.empty()){
+                break;
+            }
+            //如果是做直播 可以sleep
+            //如果播放本地文件 （seek方法存在）
         } else {
 
         }
     }
-    // 2.解码
+    isPlaying=0;
+    audioChannel->stop();
+    videoChannel->stop();
 
 }
 
 void BaseFFmpeg::setRenderFrameCallback(RenderFrameCallBack callBack1) {
     this->callback = callBack1;
 
+}
+
+void BaseFFmpeg::stop() {
+    isPlaying = 0;
+    //formatContext 也需要释放
+    pthread_create(&stop_pid, 0, task_stop, this);
+//    if (audioChannel) {
+//        audioChannel->stop();
+//    }
+//    if (videoChannel) {
+//        videoChannel->stop();
+//    }
 }

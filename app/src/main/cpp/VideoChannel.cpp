@@ -63,9 +63,6 @@ VideoChannel::VideoChannel(int id, AVCodecContext *avCodecContext, int fps, AVRa
                       avCodecContext, time_base) {
     this->fps = fps;
 
-//    pakets.setSyncHandle(dropAVPacket);
-//    // 调用 dropAVPacket 方法；
-//    pakets.sync();
     frames.setSyncHandle(dropAVFrames);
 }
 
@@ -158,37 +155,37 @@ void VideoChannel::render() {
         //真实需要的间隔时间
         double delays = extra_delay + frame_delays;
         if (!audioChannel) {
-            LOGE("视频快了video audioChannel：%lf",audioChannel->clock);
+            LOGE("视频快了video audioChannel：%lf", audioChannel->clock);
             av_usleep(delays * 1000000);
         } else {
             if (clock == 0) {
-                LOGE("视频快了video audioChannel %lf",audioChannel->clock);
+                LOGE("视频快了video audioChannel %lf", audioChannel->clock);
                 av_usleep(delays * 1000000);
             } else {
                 //比较音视频
                 double audioClock = audioChannel->clock;
-                if(audioChannel->clock<0.0001){
-                    av_usleep(1 * 1000000);
+                if (audioChannel->clock < 0.0001) {
+                    av_usleep(1 * 100000);
                     audioClock = audioChannel->clock;
                 }
-                LOGE("视频快了video audioChannel %d",&audioChannel);
+                LOGE("视频快了video audioChannel %d", &audioChannel);
 
                 //音视频相差的间隔
                 double diff = clock - audioClock;
                 //大于0 表示视频比较快 小于0 表示音频比较快
                 if (diff > 0) {
-                    LOGE("视频快了：%lf",diff);
+                    LOGE("视频快了：%lf", diff);
                     av_usleep((delays + diff) * 1000000);
                 } else if (diff < 0) {
-                    LOGE("音乐 频快了：%lf",diff);
+                    LOGE("音乐 频快了：%lf", diff);
 
                     //不睡了 直接往前赶；视频包有可能积压的太多了 可以考虑丢包
                     if (fabs(diff) >= 0.05) { //如果是音视频比视频快了0 .0 5秒 直接区丢包
-                       releaseAVFrame(&frame);
+                        releaseAVFrame(&frame);
                         // 开始丢包
                         frames.sync();
                         continue;
-                    } else{
+                    } else {
                         //表示在允许的范围内之内
                     }
                 }
@@ -201,15 +198,30 @@ void VideoChannel::render() {
     }
     av_freep(&dst_data[0]);
     releaseAVFrame(&frame);
+    isPlaying=0;
+    sws_freeContext(swsContext);
+    swsContext=0;
 }
 
 void VideoChannel::setRenderFrame(RenderFrameCallBack callBack) {
     this->callBack = callBack;
 }
 
-void VideoChannel::setAudioChannel(AudioChannel* audioChannel1) {
-    LOGE("视频快了video audioChannel 207：%d",&audioChannel1);
+void VideoChannel::setAudioChannel(AudioChannel *audioChannel1) {
+    LOGE("视频快了video audioChannel 207：%d", &audioChannel1);
     audioChannel = audioChannel1;
-    LOGE("视频快了video audioChannel 210：%d",&audioChannel);
+    LOGE("视频快了video audioChannel 210：%d", &audioChannel);
 
 }
+
+void VideoChannel::stop() {
+    isPlaying = 0;
+    frames.setWork(0);
+    pakets.setWork(0);
+    pthread_join(pid_decode, 0);
+    pthread_join(pid_play, 0);
+
+
+}
+
+

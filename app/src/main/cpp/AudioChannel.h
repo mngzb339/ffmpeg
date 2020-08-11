@@ -18,10 +18,13 @@ extern "C" {
 
 class AudioChannel : public BaseChannel {
 public:
-    AudioChannel(int id, AVCodecContext *avCodecContext,AVRational time_base);
+    AudioChannel(int id, AVCodecContext *avCodecContext, AVRational time_base);
+
     ~AudioChannel();
 
     void play();
+
+    void stop();
 
     // 解码
     void decode();
@@ -33,7 +36,7 @@ public:
 
 public:
     //采集数据内存地址
-    uint8_t *data=0;
+    uint8_t *data = 0;
     int out_channels;
     int out_samplesize;
     int out_sample_rate;
@@ -41,7 +44,7 @@ private:
     pthread_t pid_audio_decode;
     pthread_t pid_audio_paly;
     //引擎对象
-    SLObjectItf engineObject =0;
+    SLObjectItf engineObject = 0;
     //引擎接口
     SLEngineItf engineInterface = 0;
     //混音器
@@ -53,7 +56,7 @@ private:
 
     SLAndroidSimpleBufferQueueItf bqPlayerBufferQueueInterface = 0;
     // 重新采样
-    SwrContext *swrContext=0;
+    SwrContext *swrContext = 0;
 
 };
 
