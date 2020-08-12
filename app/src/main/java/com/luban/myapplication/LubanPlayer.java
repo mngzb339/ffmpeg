@@ -36,6 +36,7 @@ public class LubanPlayer implements SurfaceHolder.Callback{
      */
     public void release() {
         holder.removeCallback(this);
+        native_release();
     }
 
     /**
@@ -44,6 +45,9 @@ public class LubanPlayer implements SurfaceHolder.Callback{
      */
     public void setSurfaceView(SurfaceView surfaceView) {
         this.surfaceView = surfaceView;
+        if(null!=holder){
+            holder.removeCallback(this);
+        }
         holder = surfaceView.getHolder();
         holder.addCallback(this);
     }
@@ -109,4 +113,7 @@ public class LubanPlayer implements SurfaceHolder.Callback{
     public native void native_SetSurface(Surface surface);
 
     public native void native_stop();
+
+    public native void native_release();
+
 }

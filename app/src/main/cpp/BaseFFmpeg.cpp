@@ -5,13 +5,18 @@
 #include "BaseFFmpeg.h"
 #include "JavaCallHelper.h"
 #include "include/libavutil/avutil.h"
-
+#include "macro.h"
+extern "C" {
+#include <libavutil/time.h>
+}
 void *task_stop(void *args) {
     BaseFFmpeg *fFmpeg = static_cast<BaseFFmpeg *>(args);
     // 等待 prepare 结束再来执行接下来的情况
     pthread_join(fFmpeg->pid, 0);
     // 保证 start 线程也结束
     pthread_join(fFmpeg->playerPid, 0);
+    DELETE(fFmpeg->audioChannel);
+    DELETE(fFmpeg->videoChannel);
     // 这个时候释放就不会有问题了
     if (fFmpeg->formatContext) {
         // 关闭读取然后释放结构体本身（关闭网络链接 和读流）
@@ -40,11 +45,9 @@ BaseFFmpeg::BaseFFmpeg(const char *datasource, JavaCallHelper *callHelper) {
 }
 
 BaseFFmpeg::~BaseFFmpeg() {
-    //释放
-//    delete datasource;
-//    datasource = 0;
+
     DELETE(datasource);
-    DELETE(callHelper);
+    //DELETE(callHelper);
 }
 
 /**
@@ -69,7 +72,7 @@ void BaseFFmpeg::_prepare() {
     //指示超时时间5秒作用
     av_dict_set(options, "timeout", "5000000", 0);
     int ret = avformat_open_input(&formatContext, datasource, 0, options);
-
+    av_dict_free(options);
     if (ret != 0) {//ret ==0表示成功
         LOGE("打开媒体失败:%s", av_err2str(ret));
         if (isPlaying) {
@@ -193,6 +196,17 @@ void BaseFFmpeg::_startPlay() {
     // 1.读取音视频数据包
     int ret;
     while (isPlaying) {
+        //读取文件的时候没有网络请求，一下子读完了，可能导致oom
+        //特别是读本地文件的时候 一下子就读完了
+        if (audioChannel && audioChannel->pakets.size() > 100) {
+            //10ms
+            av_usleep(1000 * 10);
+            continue;
+        }
+        if (videoChannel && videoChannel->pakets.size() > 100) {
+            av_usleep(1000 * 10);
+            continue;
+        }
         AVPacket *packet = av_packet_alloc();
         ret = av_read_frame(formatContext, packet);
         if (ret == 0) {//ret==0 表示成功
@@ -227,6 +241,7 @@ void BaseFFmpeg::setRenderFrameCallback(RenderFrameCallBack callBack1) {
 
 void BaseFFmpeg::stop() {
     isPlaying = 0;
+    callHelper=0;
     //formatContext 也需要释放
     pthread_create(&stop_pid, 0, task_stop, this);
 //    if (audioChannel) {
