@@ -45,7 +45,6 @@ public:
         if (work) {
             q.push(new_value);
             pthread_cond_signal(&cond);
-            pthread_mutex_unlock(&mutex);
         }else{
             releaseCallback(&new_value);
         }
