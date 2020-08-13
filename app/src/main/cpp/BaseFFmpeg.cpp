@@ -65,16 +65,23 @@ void BaseFFmpeg::_prepare() {
 
     //初始化ffmpeg 使用网络
     avformat_network_init();
+
     //结构体包含了视频的信息宽高等信息 1.拿到formatContext
     //文件路径不对 手机没网都有可能导致失败
     // 第三那个参数 ：打开的媒体格式一般不用传 第4个参数是一个字典
-    AVDictionary **options = 0;
+    AVDictionary *options = 0;
     //指示超时时间5秒作用
-    av_dict_set(options, "timeout", "5000000", 0);
-    int ret = avformat_open_input(&formatContext, datasource, 0, options);
-    av_dict_free(options);
+    LOGE("查找流失败:%s", "50000000");
+
+    av_dict_set(&options, "timeout", "50000000", 0);
+
+    int ret = avformat_open_input(&formatContext, datasource, 0, 0);
+    LOGE("查找流失败:%s", "ret(ret)");
+
+    av_dict_free(&options);
+
     if (ret != 0) {//ret ==0表示成功
-        LOGE("打开媒体失败:%s", av_err2str(ret));
+        LOGE("打开媒体失败1:%s", av_err2str(ret));
         if (isPlaying) {
             callHelper->onError(THREAD_CHILD, FFMPEG_CAN_NOT_OPEN_URL);
         }
@@ -140,6 +147,7 @@ void BaseFFmpeg::_prepare() {
         //单位This is the fundamental unit of time (in seconds) in terms
         AVRational time_base = stream->time_base;
         if (codecPar->codec_type == AVMEDIA_TYPE_AUDIO) {//音频
+
             audioChannel = new AudioChannel(i, context, time_base);
         } else if (codecPar->codec_type == AVMEDIA_TYPE_VIDEO) {//视频
             //帧率：单位时间内 显示多少个图像
@@ -151,6 +159,8 @@ void BaseFFmpeg::_prepare() {
         }
 
     }
+    LOGE("查找流失败:%s", "162");
+    isPlaying = 1;
     //没有音视频 很少见
 
     if (audioChannel != 0 && !videoChannel != 0) {
@@ -160,7 +170,9 @@ void BaseFFmpeg::_prepare() {
         }
         return;
     }
+    LOGE("查找流失败isPlaying:%d", isPlaying);
     if (isPlaying) {
+        LOGE("查找流失败:%s", "onPrepare(THREAD_CHILD)");
         callHelper->onPrepare(THREAD_CHILD);
     }
 }
@@ -173,6 +185,7 @@ void *task_play(void *args) {
 }
 
 void BaseFFmpeg::startPlay() {
+    LOGE("查找流失败:%s", "startPlay");
 
     // 正在播放
     isPlaying = 1;
@@ -195,7 +208,11 @@ void BaseFFmpeg::startPlay() {
 void BaseFFmpeg::_startPlay() {
     // 1.读取音视频数据包
     int ret;
+    LOGE("查找流失败:%s", "_startPlay");
+
     while (isPlaying) {
+        LOGE("查找流失败:%s", "_startPlay");
+
         //读取文件的时候没有网络请求，一下子读完了，可能导致oom
         //特别是读本地文件的时候 一下子就读完了
         if (audioChannel && audioChannel->pakets.size() > 100) {
@@ -228,6 +245,8 @@ void BaseFFmpeg::_startPlay() {
 
         }
     }
+    LOGE("查找流失败:%s", "isPlaying=0");
+
     isPlaying=0;
     audioChannel->stop();
     videoChannel->stop();
@@ -240,14 +259,11 @@ void BaseFFmpeg::setRenderFrameCallback(RenderFrameCallBack callBack1) {
 }
 
 void BaseFFmpeg::stop() {
+    LOGE("查找流失败:%s", "isPlaying=0BaseFFmpeg::stop");
+
     isPlaying = 0;
     callHelper=0;
     //formatContext 也需要释放
     pthread_create(&stop_pid, 0, task_stop, this);
-//    if (audioChannel) {
-//        audioChannel->stop();
-//    }
-//    if (videoChannel) {
-//        videoChannel->stop();
-//    }
+
 }
